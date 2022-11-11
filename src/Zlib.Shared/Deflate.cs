@@ -68,6 +68,7 @@
 
 
 using System;
+using System.Buffers;
 
 namespace Ionic.Zlib
 {
@@ -918,9 +919,9 @@ namespace Ionic.Zlib
             int max_block_size = 0xffff;
             int max_start;
 
-            if (max_block_size > pending.Length - 5)
+            if (max_block_size > pendingLength - 5)
             {
-                max_block_size = pending.Length - 5;
+                max_block_size = pendingLength - 5;
             }
 
             // Copy as much as possible from input to output:
@@ -1532,6 +1533,7 @@ namespace Ionic.Zlib
             return Initialize(codec, level, bits, MEM_LEVEL_DEFAULT, compressionStrategy);
         }
 
+        private int pendingLength;
         internal int Initialize(ZlibCodec codec, CompressionLevel level, int windowBits, int memLevel, CompressionStrategy strategy)
         {
             _codec = codec;
@@ -1555,18 +1557,19 @@ namespace Ionic.Zlib
             hash_mask = hash_size - 1;
             hash_shift = ((hash_bits + MIN_MATCH - 1) / MIN_MATCH);
 
-            window = new byte[w_size * 2];
-            prev = new short[w_size];
-            head = new short[hash_size];
+            window = ArrayPool<byte>.Shared.Rent(w_size * 2);
+            prev = ArrayPool<short>.Shared.Rent(w_size);
+            head = ArrayPool<short>.Shared.Rent(hash_size);
 
             // for memLevel==8, this will be 16384, 16k
             lit_bufsize = 1 << (memLevel + 6);
+            pendingLength = lit_bufsize * 4;
 
             // Use a single array as the buffer for data pending compression,
             // the output distance codes, and the output length codes (aka tree).
             // orig comment: This works just fine since the average
             // output size for (length,distance) codes is <= 24 bits.
-            pending = new byte[lit_bufsize * 4];
+            pending = ArrayPool<byte>.Shared.Rent(pendingLength);
             _distanceOffset = lit_bufsize;
             _lengthOffset = (1 + 2) * lit_bufsize;
 
@@ -1611,10 +1614,10 @@ namespace Ionic.Zlib
                 return ZlibConstants.Z_STREAM_ERROR;
             }
             // Deallocate in reverse order of allocations:
-            pending = null;
-            head = null;
-            prev = null;
-            window = null;
+            ArrayPool<byte>.Shared.Return(pending);
+            ArrayPool<short>.Shared.Return(head);
+            ArrayPool<short>.Shared.Return(prev);
+            ArrayPool<byte>.Shared.Return(window);
             // free
             // dstate=null;
             return status == BUSY_STATE ? ZlibConstants.Z_DATA_ERROR : ZlibConstants.Z_OK;
