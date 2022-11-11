@@ -7,6 +7,10 @@
         <RootNamespace>Ionic.Zip</RootNamespace>
         <OutputType>Library</OutputType>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
+        <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+        <PackageId>DotNetZip-Lowalloc</PackageId>
+        <Authors>DotNetZip,Mahmoud Abaza</Authors>
+        <Description>this is DotNetZip but with low alloc for continuous saving.</Description>
     </PropertyGroup>
 
     <PropertyGroup>
