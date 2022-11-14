@@ -2447,7 +2447,7 @@ namespace Ionic.Zip
         private void CopyThroughWithRecompute(Stream outstream)
         {
             int n;
-            byte[] bytes = ArrayPool<byte>.Shared.Rent(BufferSize);
+            Span<byte> bytes = stackalloc byte[BufferSize];
             var input = new CountingStream(this.ArchiveStream);
 
             long origRelativeOffsetOfHeader = _RelativeOffsetOfLocalHeader;
@@ -2482,11 +2482,11 @@ namespace Ionic.Zip
                     len = (remaining > BufferSize) ? BufferSize : (int)remaining;
 
                     // read
-                    n = input.Read(bytes, 0, len);
+                    n = input.Read(bytes[0..len]);
                     _CheckRead(n);
 
                     // write
-                    outstream.Write(bytes, 0, n);
+                    outstream.Write(bytes[0..n]);
                     remaining -= n;
                     OnWriteBlock(input.BytesRead, this._CompressedSize);
                     if (_ioOperationCanceled)
@@ -2543,14 +2543,13 @@ namespace Ionic.Zip
             }
 
             _TotalEntrySize = _LengthOfHeader + _CompressedFileDataSize + _LengthOfTrailer;
-            ArrayPool<byte>.Shared.Return(bytes);
         }
 
 
         private void CopyThroughWithNoChange(Stream outstream)
         {
             int n;
-            byte[] bytes = ArrayPool<byte>.Shared.Rent(BufferSize);
+            Span<byte> bytes = stackalloc byte[BufferSize];
             var input = new CountingStream(this.ArchiveStream);
 
             // seek to the beginning of the entry data in the input stream
@@ -2593,18 +2592,16 @@ namespace Ionic.Zip
                 int len = (remaining > BufferSize) ? BufferSize : (int)remaining;
 
                 // read
-                n = input.Read(bytes, 0, len);
+                n = input.Read(bytes[0..len]);
                 _CheckRead(n);
 
                 // write
-                outstream.Write(bytes, 0, n);
+                outstream.Write(bytes[0..n]);
                 remaining -= n;
                 OnWriteBlock(input.BytesRead, this._TotalEntrySize);
                 if (_ioOperationCanceled)
                     break;
             }
-            
-            ArrayPool<byte>.Shared.Return(bytes);
         }
 
 

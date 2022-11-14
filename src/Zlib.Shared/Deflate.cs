@@ -69,6 +69,8 @@
 
 using System;
 using System.Buffers;
+using Ionic.Zip;
+using Ionic.Zip.Utils;
 
 namespace Ionic.Zlib
 {
@@ -200,7 +202,7 @@ namespace Ionic.Zlib
 
         internal ZlibCodec _codec; // the zlib encoder/decoder
         internal int status;       // as the name implies
-        internal byte[] pending;   // output still pending - waiting to be compressed
+        internal ArraySegment<byte> pending;   // output still pending - waiting to be compressed
         internal int nextPending;  // index of next pending byte to output to the stream
         internal int pendingCount; // number of bytes in the pending buffer
 
@@ -212,7 +214,7 @@ namespace Ionic.Zlib
         internal int w_mask;       // w_size - 1
 
         //internal byte[] dictionary;
-        internal byte[] window;
+        internal ArraySegment<byte> window;
 
         // Sliding window. Input bytes are read into the second half of the window,
         // and move to the first half later to keep a dictionary of at least wSize
@@ -226,12 +228,12 @@ namespace Ionic.Zlib
         // Actual size of window: 2*wSize, except when the user input buffer
         // is directly used as sliding window.
 
-        internal short[] prev;
+        internal ArraySegment<short> prev;
         // Link to older string with same hash index. To limit the size of this
         // array to 64K, this link is maintained only for the last 32K strings.
         // An index in this array is thus a window index modulo 32K.
 
-        internal short[] head;  // Heads of the hash chains or NIL.
+        internal ArraySegment<short> head;  // Heads of the hash chains or NIL.
 
         internal int ins_h;     // hash index of string to be inserted
         internal int hash_size; // number of elements in hash table
@@ -350,8 +352,7 @@ namespace Ionic.Zlib
             window_size = 2 * w_size;
 
             // clear the hash - workitem 9063
-            Array.Clear(head, 0, hash_size);
-            //for (int i = 0; i < hash_size; i++) head[i] = 0;
+            ArraySegmentUtils.Clear(head, 0 , hash_size);
 
             config = Config.Lookup(compressionLevel);
             SetDeflater();
@@ -610,9 +611,9 @@ namespace Ionic.Zlib
 
         // Output a block of bytes on the stream.
         // IN assertion: there is enough room in pending_buf.
-        private void put_bytes(byte[] p, int start, int len)
+        private void put_bytes(ArraySegment<byte> p, int start, int len)
         {
-            Array.Copy(p, start, pending, pendingCount, len);
+            ArraySegmentUtils.Copy(p, start, pending, pendingCount, len);
             pendingCount += len;
         }
 
@@ -1083,7 +1084,7 @@ namespace Ionic.Zlib
                 }
                 else if (strstart >= w_size + w_size - MIN_LOOKAHEAD)
                 {
-                    Array.Copy(window, w_size, window, 0, w_size);
+                    ArraySegmentUtils.Copy(window, w_size, window, 0, w_size);
                     match_start -= w_size;
                     strstart -= w_size; // we now have strstart >= MAX_DIST
                     block_start -= w_size;
@@ -1534,6 +1535,8 @@ namespace Ionic.Zlib
         }
 
         private int pendingLength;
+        private byte[] byteBuf;
+        private short[] shortBuf;
         internal int Initialize(ZlibCodec codec, CompressionLevel level, int windowBits, int memLevel, CompressionStrategy strategy)
         {
             _codec = codec;
@@ -1557,19 +1560,23 @@ namespace Ionic.Zlib
             hash_mask = hash_size - 1;
             hash_shift = ((hash_bits + MIN_MATCH - 1) / MIN_MATCH);
 
-            window = ArrayPool<byte>.Shared.Rent(w_size * 2);
-            prev = ArrayPool<short>.Shared.Rent(w_size);
-            head = ArrayPool<short>.Shared.Rent(hash_size);
-
             // for memLevel==8, this will be 16384, 16k
             lit_bufsize = 1 << (memLevel + 6);
             pendingLength = lit_bufsize * 4;
-
+            
             // Use a single array as the buffer for data pending compression,
             // the output distance codes, and the output length codes (aka tree).
             // orig comment: This works just fine since the average
             // output size for (length,distance) codes is <= 24 bits.
-            pending = ArrayPool<byte>.Shared.Rent(pendingLength);
+            
+            byteBuf = ArrayPool<byte>.Shared.Rent((w_size * 2) + (lit_bufsize * 4));
+            shortBuf = ArrayPool<short>.Shared.Rent(w_size + hash_size);
+            
+            window = new ArraySegment<byte>(byteBuf, 0, (w_size * 2));
+            pending = new ArraySegment<byte>(byteBuf, (w_size * 2), (lit_bufsize * 4));
+            prev = new ArraySegment<short>(shortBuf, 0, w_size);
+            head = new ArraySegment<short>(shortBuf, w_size, hash_size);
+
             _distanceOffset = lit_bufsize;
             _lengthOffset = (1 + 2) * lit_bufsize;
 
@@ -1613,11 +1620,16 @@ namespace Ionic.Zlib
             {
                 return ZlibConstants.Z_STREAM_ERROR;
             }
+            
+            
+            pending = default;
+            window = default;
+            prev = default;
+            head = default;
+            
             // Deallocate in reverse order of allocations:
-            ArrayPool<byte>.Shared.Return(pending);
-            ArrayPool<short>.Shared.Return(head);
-            ArrayPool<short>.Shared.Return(prev);
-            ArrayPool<byte>.Shared.Return(window);
+            ArrayPool<byte>.Shared.Return(byteBuf);
+            ArrayPool<short>.Shared.Return(shortBuf);
 
             return status == BUSY_STATE ? ZlibConstants.Z_DATA_ERROR : ZlibConstants.Z_OK;
         }
@@ -1684,7 +1696,8 @@ namespace Ionic.Zlib
                 length = w_size - MIN_LOOKAHEAD;
                 index = dictionary.Length - length; // use the tail of the dictionary
             }
-            Array.Copy(dictionary, index, window, 0, length);
+            
+            ArraySegmentUtils.Copy(dictionary, index, window, 0, length);
             strstart = length;
             block_start = length;
 

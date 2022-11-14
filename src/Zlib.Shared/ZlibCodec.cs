@@ -65,6 +65,7 @@
 
 
 using System;
+using Ionic.Zip.Utils;
 using Interop=System.Runtime.InteropServices;
 
 namespace Ionic.Zlib
@@ -683,16 +684,16 @@ namespace Ionic.Zlib
             if (len == 0)
                 return;
 
-            if (dstate.pending.Length <= dstate.nextPending ||
+            if (dstate.pending.Count <= dstate.nextPending ||
                 OutputBuffer.Length <= NextOut ||
-                dstate.pending.Length < (dstate.nextPending + len) ||
+                dstate.pending.Count < (dstate.nextPending + len) ||
                 OutputBuffer.Length < (NextOut + len))
             {
                 throw new ZlibException(String.Format("Invalid State. (pending.Length={0}, pendingCount={1})",
-                    dstate.pending.Length, dstate.pendingCount));
+                    dstate.pending.Count, dstate.pendingCount));
             }
 
-            Array.Copy(dstate.pending, dstate.nextPending, OutputBuffer, NextOut, len);
+            ArraySegmentUtils.Copy(dstate.pending, dstate.nextPending, OutputBuffer, NextOut, len);
 
             NextOut             += len;
             dstate.nextPending  += len;
@@ -710,7 +711,7 @@ namespace Ionic.Zlib
         // this function so some applications may wish to modify it to avoid
         // allocating a large strm->next_in buffer and copying from it.
         // (See also flush_pending()).
-        internal int read_buf(byte[] buf, int start, int size)
+        internal int read_buf(ArraySegment<byte> buf, int start, int size)
         {
             int len = AvailableBytesIn;
 
@@ -721,11 +722,9 @@ namespace Ionic.Zlib
 
             AvailableBytesIn -= len;
 
-            if (dstate.WantRfc1950HeaderBytes)
-            {
-                _Adler32 = Adler.Adler32(_Adler32, InputBuffer, NextIn, len);
-            }
-            Array.Copy(InputBuffer, NextIn, buf, start, len);
+            if (dstate.WantRfc1950HeaderBytes) _Adler32 = Adler.Adler32(_Adler32, InputBuffer, NextIn, len);
+
+            ArraySegmentUtils.Copy(InputBuffer, NextIn, buf, start, len);
             NextIn += len;
             TotalBytesIn += len;
             return len;
