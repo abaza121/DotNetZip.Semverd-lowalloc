@@ -920,9 +920,9 @@ namespace Ionic.Zlib
             int max_block_size = 0xffff;
             int max_start;
 
-            if (max_block_size > pendingLength - 5)
+            if (max_block_size > pending.Count - 5)
             {
-                max_block_size = pendingLength - 5;
+                max_block_size = pending.Count - 5;
             }
 
             // Copy as much as possible from input to output:
@@ -1533,8 +1533,7 @@ namespace Ionic.Zlib
         {
             return Initialize(codec, level, bits, MEM_LEVEL_DEFAULT, compressionStrategy);
         }
-
-        private int pendingLength;
+        
         private byte[] byteBuf;
         private short[] shortBuf;
         internal int Initialize(ZlibCodec codec, CompressionLevel level, int windowBits, int memLevel, CompressionStrategy strategy)
@@ -1562,8 +1561,7 @@ namespace Ionic.Zlib
 
             // for memLevel==8, this will be 16384, 16k
             lit_bufsize = 1 << (memLevel + 6);
-            pendingLength = lit_bufsize * 4;
-            
+
             // Use a single array as the buffer for data pending compression,
             // the output distance codes, and the output length codes (aka tree).
             // orig comment: This works just fine since the average
