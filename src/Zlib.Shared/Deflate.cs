@@ -1618,8 +1618,7 @@ namespace Ionic.Zlib
             ArrayPool<short>.Shared.Return(head);
             ArrayPool<short>.Shared.Return(prev);
             ArrayPool<byte>.Shared.Return(window);
-            // free
-            // dstate=null;
+
             return status == BUSY_STATE ? ZlibConstants.Z_DATA_ERROR : ZlibConstants.Z_OK;
         }
 

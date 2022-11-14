@@ -600,7 +600,7 @@ namespace Ionic.Zlib
             if (dstate == null)
                 throw new ZlibException("No Deflate State!");
             // TODO: dinoch Tue, 03 Nov 2009  15:39 (test this)
-            //int ret = dstate.End();
+            int ret = dstate.End(); // we call End here to clear the Array Pool but we don't use ret to avoid making something not work at the moment.
             dstate = null;
             return ZlibConstants.Z_OK; //ret;
         }
