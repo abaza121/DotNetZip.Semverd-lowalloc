@@ -7,18 +7,20 @@ namespace Ionic.Zip.Utils
         public static void Copy<T>(ArraySegment<T> source, int sourceIndex, ArraySegment<T> destination, int destinationIndex, int length)
         {
             if (sourceIndex + length > source.Count || destinationIndex + length > destination.Count) throw new ArgumentOutOfRangeException();
-            Array.Copy(source.Array, source.Offset + sourceIndex, destination.Array, destination.Offset + destinationIndex, length);
+            source.Slice(sourceIndex, length).CopyTo(destination.Slice(destinationIndex, length));
         }
 
         public static void Copy<T>(ArraySegment<T> source, int sourceIndex, T[] destination, int destinationIndex, int length)
         {
             if (sourceIndex + length > source.Count) throw new ArgumentOutOfRangeException(nameof(source));
-            Array.Copy(source.Array, source.Offset + sourceIndex, destination, destinationIndex, length);
+            var destinationSegment = new ArraySegment<T>(destination, destinationIndex,length);
+            source.Slice(sourceIndex, length).CopyTo(destinationSegment);
         }
         public static void Copy<T>(T[] source, int sourceIndex, ArraySegment<T> destination, int destinationIndex, int length)
         {
             if (destinationIndex + length > destination.Count) throw new ArgumentOutOfRangeException(nameof(destination));
-            Array.Copy(source, sourceIndex, destination.Array, destinationIndex + destination.Offset, length);
+            var sourceSegment = new ArraySegment<T>(source, sourceIndex, length);
+            sourceSegment.CopyTo(destination.Slice(destinationIndex, length));
         }
 
         public static void Clear<T>(ArraySegment<T> target, int index, int length)

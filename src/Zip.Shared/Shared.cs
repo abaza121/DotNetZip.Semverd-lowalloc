@@ -587,8 +587,38 @@ namespace Ionic.Zip
 
             do
             {
-                n = s.Read(buffer, offset, count);
-                done = true;
+                try
+                {
+                    n = s.Read(buffer, offset, count);
+                    done = true;
+                }
+                catch (System.IO.IOException ioexc1)
+                {
+                    // Check if we can call GetHRForException,
+                    // which makes unmanaged code calls.
+                    var p = new System.Security.Permissions.SecurityPermission(
+                        System.Security.Permissions.SecurityPermissionFlag.UnmanagedCode);
+                    if (p.IsUnrestricted())
+                    {
+                        uint hresult = _HRForException(ioexc1);
+                        if (hresult != 0x80070021)  // ERROR_LOCK_VIOLATION
+                            throw new System.IO.IOException(String.Format("Cannot read file {0}", FileName), ioexc1);
+                        retries++;
+                        if (retries > 10)
+                            throw new System.IO.IOException(String.Format("Cannot read file {0}, at offset 0x{1:X8} after 10 retries", FileName, offset), ioexc1);
+
+                        // max time waited on last retry = 250 + 10*550 = 5.75s
+                        // aggregate time waited after 10 retries: 250 + 55*550 = 30.5s
+                        System.Threading.Thread.Sleep(250 + retries * 550);
+                    }
+                    else
+                    {
+                        // The permission.Demand() failed. Therefore, we cannot call
+                        // GetHRForException, and cannot do the subtle handling of
+                        // ERROR_LOCK_VIOLATION.  Just bail.
+                        throw;
+                    }
+                }
             }
             while (!done);
 
@@ -755,20 +785,6 @@ namespace Ionic.Zip
             _bytesRead += n;
             return n;
         }
-        
-        /// <summary>
-        ///   The read method.
-        /// </summary>
-        /// <param name="buffer">The buffer to hold the data read from the stream.</param>
-        /// <param name="offset">the offset within the buffer to copy the first byte read.</param>
-        /// <param name="count">the number of bytes to read.</param>
-        /// <returns>the number of bytes read, after decryption and decompression.</returns>
-        public override int Read(Span<byte> buffer)
-        {
-            int n = _s.Read(buffer);
-            _bytesRead += n;
-            return n;
-        }
 
         /// <summary>
         ///   Write data into the stream.
@@ -781,19 +797,6 @@ namespace Ionic.Zip
             if (count == 0) return;
             _s.Write(buffer, offset, count);
             _bytesWritten += count;
-        }
-        
-        /// <summary>
-        ///   Write data into the stream.
-        /// </summary>
-        /// <param name="buffer">The buffer holding data to write to the stream.</param>
-        /// <param name="offset">the offset within that data array to find the first byte to write.</param>
-        /// <param name="count">the number of bytes to write.</param>
-        public override void Write(ReadOnlySpan<byte> buffer)
-        {
-            if (buffer.Length == 0) return;
-            _s.Write(buffer);
-            _bytesWritten += buffer.Length;
         }
 
         /// <summary>
