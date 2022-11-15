@@ -203,7 +203,7 @@ namespace Ionic.Zip
             {
 
             }
-#if NETCOREAPP2_0 || NETSTANDARD2_0
+#if NETCOREAPP2_0 || NETSTANDARD
             if (ibm437 == null)
             {
                 try

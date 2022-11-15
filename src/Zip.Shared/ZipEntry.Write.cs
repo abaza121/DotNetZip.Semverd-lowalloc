@@ -27,6 +27,7 @@
 
 
 using System;
+using System.Buffers;
 using System.IO;
 using RE = System.Text.RegularExpressions;
 
@@ -2446,7 +2447,7 @@ namespace Ionic.Zip
         private void CopyThroughWithRecompute(Stream outstream)
         {
             int n;
-            byte[] bytes = new byte[BufferSize];
+            byte[] bytes = ArrayPool<byte>.Shared.Rent(BufferSize);
             var input = new CountingStream(this.ArchiveStream);
 
             long origRelativeOffsetOfHeader = _RelativeOffsetOfLocalHeader;
@@ -2478,14 +2479,14 @@ namespace Ionic.Zip
 
                 while (remaining > 0)
                 {
-                    len = (remaining > bytes.Length) ? bytes.Length : (int)remaining;
+                    len = (remaining > BufferSize) ? BufferSize : (int)remaining;
 
                     // read
                     n = input.Read(bytes, 0, len);
                     _CheckRead(n);
 
                     // write
-                    outstream.Write(bytes, 0, n);
+                    outstream.Write(bytes,0,n);
                     remaining -= n;
                     OnWriteBlock(input.BytesRead, this._CompressedSize);
                     if (_ioOperationCanceled)
@@ -2542,13 +2543,14 @@ namespace Ionic.Zip
             }
 
             _TotalEntrySize = _LengthOfHeader + _CompressedFileDataSize + _LengthOfTrailer;
+            ArrayPool<byte>.Shared.Return(bytes);
         }
 
 
         private void CopyThroughWithNoChange(Stream outstream)
         {
             int n;
-            byte[] bytes = new byte[BufferSize];
+            byte[] bytes = ArrayPool<byte>.Shared.Rent(BufferSize);
             var input = new CountingStream(this.ArchiveStream);
 
             // seek to the beginning of the entry data in the input stream
@@ -2588,19 +2590,21 @@ namespace Ionic.Zip
             long remaining = this._TotalEntrySize;
             while (remaining > 0)
             {
-                int len = (remaining > bytes.Length) ? bytes.Length : (int)remaining;
+                int len = (remaining > BufferSize) ? BufferSize : (int)remaining;
 
                 // read
-                n = input.Read(bytes, 0, len);
+                n = input.Read(bytes,0,len);
                 _CheckRead(n);
 
                 // write
-                outstream.Write(bytes, 0, n);
+                outstream.Write(bytes,0,n);
                 remaining -= n;
                 OnWriteBlock(input.BytesRead, this._TotalEntrySize);
                 if (_ioOperationCanceled)
                     break;
             }
+            
+            ArrayPool<byte>.Shared.Return(bytes);
         }
 
 

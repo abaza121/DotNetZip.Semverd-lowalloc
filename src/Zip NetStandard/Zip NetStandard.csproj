@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>netstandard2.0</TargetFramework>
+        <TargetFramework>netstandard2.1</TargetFramework>
         <AssemblyName>DotNetZip</AssemblyName>
         <Id>DotNetZip</Id>
         <RootNamespace>Ionic.Zip</RootNamespace>
@@ -11,6 +11,7 @@
         <PackageId>DotNetZip-Lowalloc</PackageId>
         <Authors>DotNetZip,Mahmoud Abaza</Authors>
         <Description>this is DotNetZip but with low alloc for continuous saving.</Description>
+        <PackageVersion>1.1.6</PackageVersion>
     </PropertyGroup>
 
     <PropertyGroup>
@@ -39,6 +40,12 @@
 
     <ItemGroup>
       <Compile Include="..\SolutionInfo.cs" Link="SolutionInfo.cs" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <PackageReference Include="System.Buffers" Version="4.5.1" />
+      <PackageReference Include="System.Security.Permissions" Version="6.0.0" />
+      <PackageReference Include="System.Text.Encoding.CodePages" Version="6.0.0" />
     </ItemGroup>
 
     <Import Project="..\Zlib.Shared\Zlib.Shared.projitems" Label="Shared" />

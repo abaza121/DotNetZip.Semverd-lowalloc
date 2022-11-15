@@ -9,6 +9,7 @@
     <Import_RootNamespace>Zlib.Shared</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)ArraySegmentUtils.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)CRC32.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Deflate.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)DeflateStream.cs" />
