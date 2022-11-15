@@ -11,7 +11,7 @@
         <PackageId>DotNetZip-Lowalloc</PackageId>
         <Authors>DotNetZip,Mahmoud Abaza</Authors>
         <Description>this is DotNetZip but with low alloc for continuous saving.</Description>
-        <PackageVersion>1.1.4</PackageVersion>
+        <PackageVersion>1.1.5</PackageVersion>
     </PropertyGroup>
 
     <PropertyGroup>
